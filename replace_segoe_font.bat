@@ -1,6 +1,6 @@
 @echo off
-title Nirmala UI Bengali Font Merger
-color 0B
+title Windows Segoe UI Family Font Replacer
+color 0A
 
 :: Ensure Administrator privileges
 fltmc >nul 2>&1 || (
@@ -13,11 +13,11 @@ fltmc >nul 2>&1 || (
 
 cd /d "%~dp0"
 echo ========================================================
-echo         Nirmala UI Bengali Font Merger Launcher
+echo         Segoe UI Family Font Replacer Launcher
 echo ========================================================
 echo.
 
-python "%~dp0merge_nirmala.py"
+python "%~dp0replace_segoe.py"
 
 echo.
 echo Press any key to exit...

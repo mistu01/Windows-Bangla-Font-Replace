@@ -1,0 +1,26 @@
+========================================================================
+                  PUT YOUR CUSTOM SEGOE REPLACEMENT FONT HERE
+========================================================================
+
+Drop your custom font family (.ttf or .otf) right here in this folder!
+
+Examples of popular system UI fonts:
+- Inter, Roboto, San Francisco (SF Pro), Aptos, Cascadia Code, Segoe UI alternatives, etc.
+
+Single font or full family:
+- If you only have 1 font (e.g. Regular):
+    MyFont-Regular.ttf
+    -> The script will automatically match it to all Segoe UI weights.
+
+- If you have multiple weights/styles:
+    MyFont-Light.ttf
+    MyFont-Regular.ttf
+    MyFont-SemiBold.ttf
+    MyFont-Bold.ttf
+    MyFont-Italic.ttf
+    -> The script automatically maps each Windows Segoe face to its closest
+       weight class (100-900) and style!
+
+Once your font file(s) are placed here, double-click "replace_segoe_font.bat"
+from the main folder!
+========================================================================

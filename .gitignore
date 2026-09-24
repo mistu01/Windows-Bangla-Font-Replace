@@ -19,9 +19,12 @@
 # Build, Backup & Intermediate Font Directories
 # ========================================================================
 backup/
+backup_bangla/
+backup_segoe/
 extracted_ttf/
 merged_ttf/
 output/
+output_segoe/
 .temp_merge/
 
 # ========================================================================

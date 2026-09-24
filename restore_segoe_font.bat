@@ -1,5 +1,5 @@
 @echo off
-title Restore Original Windows Nirmala Font
+title Restore Original Windows Segoe UI Fonts
 color 0E
 
 :: Ensure Administrator privileges
@@ -13,11 +13,11 @@ fltmc >nul 2>&1 || (
 
 cd /d "%~dp0"
 echo ========================================================
-echo         Restoring Original Windows Nirmala Font
+echo         Restoring Original Windows Segoe UI Fonts
 echo ========================================================
 echo.
 
-python "%~dp0merge_nirmala.py" --restore
+python "%~dp0replace_segoe.py" --restore
 
 echo.
 echo Press any key to exit...

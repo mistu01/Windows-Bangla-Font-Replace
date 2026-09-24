@@ -52,26 +52,26 @@ However:
 
 ### 2. Add Your Custom Bengali Font
 
-Place your desired Bengali `.ttf` or `.otf` font file(s) into the `custom_font/` folder:
+Place your desired Bengali `.ttf` or `.otf` font file(s) into the `custom_bangla/` folder:
 
 - **Single Font Example:**
   ```text
-  custom_font/Kalpurush.ttf
+  custom_bangla/Kalpurush.ttf
   ```
 - **Multi-Weight Family Example (Recommended for best results):**
   ```text
-  custom_font/NotoSerifBengali-Light.ttf
-  custom_font/NotoSerifBengali-Regular.ttf
-  custom_font/NotoSerifBengali-Medium.ttf
-  custom_font/NotoSerifBengali-Bold.ttf
+  custom_bangla/NotoSerifBengali-Light.ttf
+  custom_bangla/NotoSerifBengali-Regular.ttf
+  custom_bangla/NotoSerifBengali-Medium.ttf
+  custom_bangla/NotoSerifBengali-Bold.ttf
   ```
 
 ### 3. Run the Merger
 
-Double-click **`run_merger.bat`** (or right-click $\rightarrow$ **Run as administrator**).
+Double-click **`run_bangla_merger.bat`** (or right-click $\rightarrow$ **Run as administrator**).
 
 The script will:
-1. Back up your original Windows Nirmala UI and Segoe UI fonts into `backup/`.
+1. Back up your original Windows Nirmala UI and Segoe UI fonts into `backup_bangla/`.
 2. Extract the faces from `Nirmala.ttc`.
 3. Patch Segoe UI to remove conflicting Bengali digits.
 4. Merge your custom Bengali glyphs into Nirmala UI.
@@ -88,14 +88,36 @@ Once the script finishes, **restart your PC** to allow Windows to load the new m
 
 If you ever wish to revert back to default Microsoft fonts:
 
-1. Double-click **`restore_original.bat`** (allow Administrator privileges).
-2. The script will restore the original `Nirmala.ttc` and Segoe UI font files from the `backup/` folder.
+1. Double-click **`restore_bangla.bat`** (allow Administrator privileges).
+2. The script will restore the original `Nirmala.ttc` and Segoe UI font files from the `backup_bangla/` folder.
 3. **Restart your computer**, and Windows default typography will be restored.
 
 Alternatively via command line:
 ```bash
-python merge_nirmala.py --restore
+python replace_bangla.py --restore
 ```
+
+---
+
+## 🔤 Segoe UI Family & Windows 11 Variable Font Replacer
+
+Want to replace the entire Windows UI typeface (Segoe UI and Windows 11 Segoe UI Variable) with fonts like **Inter**, **Roboto**, **SF Pro**, or **Aptos**?
+
+A dedicated workflow is included for this!
+
+### How It Works:
+- **Intelligent Closest-Weight Matching:** Matches your custom fonts to all 8+ Segoe UI faces (Light 300, Semilight 350, Regular 400, SemiBold 600, Bold 700, Black 900, plus Italics).
+- **Windows 11 Segoe UI Variable (`SegUIVar.ttf`) Safe Patching:** Uses **OpenType Delta Nullification** to graft custom glyphs into `SegUIVar.ttf` while nullifying deltas for replaced characters. Windows DirectWrite and WinUI 3 (Start Menu, Taskbar, Settings) render your custom font cleanly without crashing or breaking variable font structures.
+- **Preserves System Icons:** Preserves Segoe UI's Private Use Area (PUA) glyphs and native system UI icons so File Explorer, Task Manager, and system controls never show missing glyph boxes (`□`).
+
+### How to Use:
+1. Place your custom font(s) into **`custom_segoe/`** (e.g. `Inter-Regular.ttf`, `Inter-Bold.ttf`, etc.).
+2. Double-click **`replace_segoe_font.bat`** (Run as administrator).
+3. Restart your computer.
+
+### How to Restore Segoe UI:
+1. Double-click **`restore_segoe_font.bat`** (Run as administrator).
+2. Restart your computer.
 
 ---
 
@@ -103,14 +125,16 @@ python merge_nirmala.py --restore
 
 ```text
 Windows-Bangla-Font-Replace/
-├── custom_font/              # Place your custom .ttf / .otf fonts here
-├── backup/                   # Untouched backup of original Windows system fonts (auto-created)
-├── extracted_ttf/            # Extracted font faces (auto-created)
-├── merged_ttf/               # Merged intermediate font faces (auto-created)
-├── output/                   # Final compiled Nirmala.ttc and patched Segoe UI (auto-created)
-├── merge_nirmala.py          # Core Python merger and Windows system patcher
-├── run_merger.bat            # 1-click Administrator launcher for merging fonts
-├── restore_original.bat      # 1-click Administrator launcher for restoring defaults
+├── custom_bangla/            # Place custom Bengali fonts here (.ttf / .otf)
+├── custom_segoe/             # Place custom Segoe UI replacement fonts here (.ttf / .otf)
+├── backup_bangla/            # Untouched backup of original Nirmala/Segoe fonts (auto-created)
+├── backup_segoe/             # Untouched backup of original Segoe family fonts (auto-created)
+├── replace_bangla.py         # Nirmala UI Bengali replacer & Segoe patcher
+├── replace_segoe.py          # Segoe UI static & variable font replacer
+├── replace_bangla_font.bat   # 1-click launcher to replace Bengali fonts
+├── replace_segoe_font.bat    # 1-click launcher to replace Segoe UI fonts
+├── restore_bangla_font.bat   # 1-click restore for Nirmala fonts
+├── restore_segoe_font.bat    # 1-click restore for Segoe UI fonts
 ├── .gitignore                # Ignores font binaries, temporary builds, and caches
 ├── LICENSE                   # MIT License
 └── README.md                 # Project documentation
@@ -120,16 +144,23 @@ Windows-Bangla-Font-Replace/
 
 ## 🛠️ Command-Line Options
 
-You can also run the Python script directly from an elevated terminal:
-
+### Windows Bangla Font Replacer (Nirmala UI):
 ```bash
-python merge_nirmala.py [OPTIONS]
+python replace_bangla.py [OPTIONS]
 ```
-
 | Option | Description |
 | :--- | :--- |
-| `-f`, `--font <path>` | Explicit path to a custom font file or directory |
+| `-b`, `--bengali-font <path>` | Explicit path to a custom Bengali font file |
 | `-r`, `--restore` | Restore original Windows Nirmala and Segoe UI fonts from backup |
+| `-h`, `--help` | Show help message and exit |
+
+### Segoe UI Family Replacer:
+```bash
+python replace_segoe.py [OPTIONS]
+```
+| Option | Description |
+| :--- | :--- |
+| `-r`, `--restore` | Restore original Windows Segoe UI and SegUIVar fonts from backup |
 | `-h`, `--help` | Show help message and exit |
 
 ---

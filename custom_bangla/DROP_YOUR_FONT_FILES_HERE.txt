@@ -12,5 +12,5 @@ Examples:
     MyFont-Regular.ttf
     MyFont-Bold.ttf
 
-Once your font file is placed here, run "run_merger.bat" from the main folder!
+Once your font file is placed here, run "replace_bangla_font.bat" from the main folder!
 ========================================================================

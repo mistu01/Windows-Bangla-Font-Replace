@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Nirmala UI & Segoe UI Bengali Font Merger for Windows
-=====================================================
+Windows Bangla Font Replacer (Nirmala UI)
+=========================================
 This script:
 1. Searches for Nirmala UI font files across Windows (Fonts directory and WinSxS).
 2. Copies and creates a safe backup of the original Nirmala.ttc.
@@ -9,7 +9,7 @@ This script:
 4. Scans all Segoe UI font files for embedded Bengali numbers (U+09E6-U+09EF)
    and currency marks (U+09F2, U+09F3). If found, creates safe backups and
    strips them so Segoe UI will not override your custom Bengali font.
-5. Merges your custom Bengali font (from the 'custom_font' directory) into each
+5. Merges your custom Bengali font (from the 'custom_bangla' directory) into each
    Nirmala UI face, rescaling metrics and replacing the Bengali glyphs while
    preserving all other scripts (Latin, Devanagari, Tamil, etc.) and original font names.
 6. Rebuilds a Windows-format TTC bundle (Nirmala.ttc).
@@ -227,6 +227,7 @@ def find_user_bengali_fonts(working_dir, specified_file=None):
         return {"candidates": [info], "source_dir": os.path.dirname(specified_file)}
 
     search_dirs = [
+        os.path.join(working_dir, "custom_bangla"),
         os.path.join(working_dir, "custom_font"),
         working_dir
     ]
@@ -623,6 +624,11 @@ def restore_backup(backup_dir, nirmala_locations):
     """Restore both original Nirmala and Segoe UI fonts from backup."""
     # 1. Restore Nirmala
     backup_file = os.path.join(backup_dir, "Nirmala_backup.ttc")
+    if not os.path.exists(backup_file):
+        legacy_backup = os.path.join(os.path.dirname(backup_dir), "backup", "Nirmala_backup.ttc")
+        if os.path.exists(legacy_backup):
+            backup_file = legacy_backup
+
     if os.path.exists(backup_file):
         print(f"[*] Restoring original Nirmala font from '{backup_file}'...")
         for loc in nirmala_locations:
@@ -632,6 +638,10 @@ def restore_backup(backup_dir, nirmala_locations):
 
     # 2. Restore Segoe UI
     segoe_manifest = os.path.join(backup_dir, "segoe", "segoe_manifest.json")
+    if not os.path.exists(segoe_manifest):
+        legacy_segoe = os.path.join(os.path.dirname(backup_dir), "backup", "segoe", "segoe_manifest.json")
+        if os.path.exists(legacy_segoe):
+            segoe_manifest = legacy_segoe
     if os.path.exists(segoe_manifest):
         try:
             with open(segoe_manifest, "r") as mf:
@@ -665,8 +675,16 @@ def main():
     ensure_dependencies()
 
     working_dir = os.path.dirname(os.path.abspath(__file__))
-    custom_font_dir = os.path.join(working_dir, "custom_font")
-    backup_dir = os.path.join(working_dir, "backup")
+    custom_bangla_dir = os.path.join(working_dir, "custom_bangla")
+    if not os.path.exists(custom_bangla_dir) and os.path.exists(os.path.join(working_dir, "custom_font")):
+        custom_bangla_dir = os.path.join(working_dir, "custom_font")
+    custom_font_dir = custom_bangla_dir
+
+    backup_dir = os.path.join(working_dir, "backup_bangla")
+    # Fallback to existing legacy backup directory if present
+    if not os.path.exists(os.path.join(backup_dir, "Nirmala_backup.ttc")) and os.path.exists(os.path.join(working_dir, "backup", "Nirmala_backup.ttc")):
+        backup_dir = os.path.join(working_dir, "backup")
+
     extracted_dir = os.path.join(working_dir, "extracted_ttf")
     merged_dir = os.path.join(working_dir, "merged_ttf")
     output_dir = os.path.join(working_dir, "output")
