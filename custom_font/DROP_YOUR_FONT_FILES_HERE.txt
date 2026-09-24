@@ -1,0 +1,16 @@
+========================================================================
+                      PUT YOUR CUSTOM BENGALI FONT HERE
+========================================================================
+
+Drop your Bengali font (.ttf or .otf) right here in this folder!
+
+Examples:
+- If you have 1 font:
+    Kalpurush.ttf (or SolaimanLipi.ttf, Siyamrupali.ttf, etc.)
+
+- If you have Regular and Bold:
+    MyFont-Regular.ttf
+    MyFont-Bold.ttf
+
+Once your font file is placed here, run "run_merger.bat" from the main folder!
+========================================================================

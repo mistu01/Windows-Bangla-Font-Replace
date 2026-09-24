@@ -1,0 +1,49 @@
+# ========================================================================
+# Font Files
+# ========================================================================
+# Ignore all font formats across the repository (TrueType, OpenType, Collections, Web fonts, etc.)
+*.ttf
+*.otf
+*.ttc
+*.otc
+*.woff
+*.woff2
+*.eot
+*.fon
+*.fnt
+*.pfb
+*.pfm
+*.afm
+
+# ========================================================================
+# Build, Backup & Intermediate Font Directories
+# ========================================================================
+backup/
+extracted_ttf/
+merged_ttf/
+output/
+.temp_merge/
+
+# ========================================================================
+# Python & Environment
+# ========================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv
+venv/
+env/
+
+# ========================================================================
+# OS & Editor Artifacts
+# ========================================================================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+*.bak
+*.swp
+.vscode/
+.idea/
