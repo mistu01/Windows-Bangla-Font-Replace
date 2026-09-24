@@ -41,13 +41,14 @@ However:
 
 ## 🚀 Getting Started
 
-### 1. Clone or Download
+### 1. Download or Clone
 
-Clone this repository or download and extract the ZIP file:
-```bash
-git clone https://github.com/mistu01/Windows-Bangla-Font-Replace.git
-cd Windows-Bangla-Font-Replace
-```
+- **Quick Download (Recommended):** Download the latest ready-to-use zip from the [Releases](https://github.com/mistu01/Windows-Bangla-Font-Replace/releases) page and extract it.
+- **Or via Git:**
+  ```bash
+  git clone https://github.com/mistu01/Windows-Bangla-Font-Replace.git
+  cd Windows-Bangla-Font-Replace
+  ```
 
 ### 2. Add Your Custom Bengali Font
 

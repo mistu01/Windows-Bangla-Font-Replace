@@ -1,0 +1,102 @@
+name: Release Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag (e.g. v1.0.0)'
+        required: false
+        type: string
+        default: ''
+      draft:
+        description: 'Publish as draft'
+        required: false
+        type: boolean
+        default: false
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Publish Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate Scripts
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install fonttools flake8
+          python -m py_compile merge_nirmala.py
+          python -m flake8 merge_nirmala.py --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Determine Version
+        id: vars
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.tag_name }}" ]; then
+            TAG="${{ inputs.tag_name }}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="v$(date +'%Y.%m.%d')"
+          fi
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "Release version: ${TAG}"
+
+      - name: Package Distribution Zip
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.vars.outputs.tag }}"
+          $dist = "dist"
+          $packageDir = "$dist/Windows-Bangla-Font-Replace"
+          
+          New-Item -ItemType Directory -Path "$packageDir/custom_font" -Force | Out-Null
+          
+          Copy-Item "merge_nirmala.py" -Destination "$packageDir\"
+          Copy-Item "run_merger.bat" -Destination "$packageDir\"
+          Copy-Item "restore_original.bat" -Destination "$packageDir\"
+          Copy-Item "README.md" -Destination "$packageDir\"
+          Copy-Item "LICENSE" -Destination "$packageDir\"
+          Copy-Item "custom_font/DROP_YOUR_FONT_FILES_HERE.txt" -Destination "$packageDir/custom_font\"
+          
+          $zipName = "Windows-Bangla-Font-Replace-$tag.zip"
+          $zipPath = "$dist/$zipName"
+          Compress-Archive -Path "$packageDir" -DestinationPath "$zipPath" -Force
+          
+          # Generate SHA-256 Checksums
+          Get-FileHash -Algorithm SHA256 "$zipPath" | ForEach-Object {
+              "$($_.Hash)  $($_.Path | Split-Path -Leaf)"
+          } | Out-File -Encoding utf8 "$dist/checksums-sha256.txt"
+          
+          Get-ChildItem -Path "$dist"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: Release ${{ steps.vars.outputs.tag }}
+          draft: ${{ inputs.draft || false }}
+          prerelease: ${{ inputs.prerelease || false }}
+          generate_release_notes: true
+          files: |
+            dist/Windows-Bangla-Font-Replace-*.zip
+            dist/checksums-sha256.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
