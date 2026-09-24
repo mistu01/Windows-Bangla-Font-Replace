@@ -172,7 +172,28 @@ def find_segoe_fonts():
                 for match in glob.glob(os.path.join(user_fonts, pattern)):
                     register_candidate(match)
 
-    return static_found, var_found
+    # 4. Discover Nirmala UI fonts for Latin patching
+    nirmala_found = []
+    if os.path.exists(fonts_dir):
+        for pattern in ("Nirmala.ttc", "Nirmala*.ttf"):
+            for match in glob.glob(os.path.join(fonts_dir, pattern)):
+                if match not in nirmala_found and os.path.exists(match):
+                    nirmala_found.append(match)
+
+    if os.path.exists(winsxs_dir):
+        for match in glob.glob(os.path.join(winsxs_dir, "*nirmala*", "Nirmala.ttc")):
+            if match not in nirmala_found and os.path.exists(match):
+                nirmala_found.append(match)
+
+    if local_appdata:
+        user_fonts = os.path.join(local_appdata, "Microsoft", "Windows", "Fonts")
+        if os.path.exists(user_fonts):
+            for pattern in ("Nirmala.ttc", "Nirmala*.ttf"):
+                for match in glob.glob(os.path.join(user_fonts, pattern)):
+                    if match not in nirmala_found and os.path.exists(match):
+                        nirmala_found.append(match)
+
+    return static_found, var_found, nirmala_found
 
 
 def inspect_font_face(font_path):
@@ -305,9 +326,31 @@ def patch_static_face(base_segoe_path, custom_font_path, output_path):
                 except Exception:
                     pass
 
+    optimize_gasp_table(base_font)
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     base_font.save(output_path)
     return replaced_count
+
+
+def optimize_gasp_table(font):
+    """
+    Ensure the font has an optimized OpenType 'gasp' table and integer scaler flags.
+    Enables DirectWrite ClearType symmetric smoothing and subpixel antialiasing
+    across all point sizes to eliminate color-fringing ('bleeding') and fuzzy edges.
+    """
+    try:
+        from fontTools.ttLib.tables._g_a_s_p import table__g_a_s_p
+        gasp = table__g_a_s_p()
+        gasp.version = 1
+        # 10 = 0x000A (DOGRAY | SYMMETRIC_SMOOTHING) for <= 8ppem
+        # 15 = 0x000F (GRIDFIT | DOGRAY | SYMMETRIC_GRIDFIT | SYMMETRIC_SMOOTHING) for all readable sizes
+        gasp.gaspRange = {8: 10, 65535: 15}
+        font['gasp'] = gasp
+
+        if 'head' in font and hasattr(font['head'], 'flags'):
+            font['head'].flags |= 0x0008
+    except Exception:
+        pass
 
 
 def patch_variable_font(var_segoe_path, custom_regular_path, output_path):
@@ -361,9 +404,73 @@ def patch_variable_font(var_segoe_path, custom_regular_path, output_path):
     if 'HVAR' in var_font:
         del var_font['HVAR']
 
+    optimize_gasp_table(var_font)
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     var_font.save(output_path)
     return replaced_count
+
+
+def patch_nirmala_latin(nirmala_path, custom_fonts, output_path):
+    """
+    Patch English/Latin glyphs in each face of Nirmala.ttc with the custom Segoe font,
+    ensuring consistent Latin typography whether text renders via Segoe UI or Nirmala UI.
+    """
+    from fontTools.ttLib import TTCollection, TTFont, scaleUpem as scaleUpemMod
+    from fontTools.pens.recordingPen import DecomposingRecordingPen
+    from fontTools.pens.ttGlyphPen import TTGlyphPen
+
+    ttc = TTCollection(nirmala_path)
+    target_upem = ttc[0]['head'].unitsPerEm
+
+    total_replaced = 0
+    for i, face in enumerate(ttc):
+        name_rec = face['name'].getDebugName(4) or f"Face_{i}"
+        is_bold = "bold" in name_rec.lower()
+        is_semilight = "semilight" in name_rec.lower()
+
+        target_weight = 700 if is_bold else (350 if is_semilight else 400)
+        matched = find_closest_custom_font(target_weight, False, custom_fonts)
+        if not matched:
+            continue
+
+        cust_font = TTFont(matched["path"])
+        if cust_font['head'].unitsPerEm != target_upem:
+            scaleUpemMod.scale_upem(cust_font, target_upem)
+
+        face_cmap = face.getBestCmap()
+        cust_cmap = cust_font.getBestCmap()
+        cust_gset = cust_font.getGlyphSet()
+
+        face_replaced = 0
+        for cp, gname_src in cust_cmap.items():
+            is_latin_or_common = (
+                (0x0020 <= cp <= 0x024F) or
+                (0x2000 <= cp <= 0x206F) or
+                (0x20A0 <= cp <= 0x20CF)
+            )
+            if not is_latin_or_common or (0xE000 <= cp <= 0xF8FF):
+                continue
+
+            if cp in face_cmap:
+                gname_target = face_cmap[cp]
+                if gname_target in face['glyf'] and gname_src in cust_gset:
+                    try:
+                        dec_pen = DecomposingRecordingPen(cust_gset)
+                        cust_gset[gname_src].draw(dec_pen)
+                        tt_pen = TTGlyphPen(None)
+                        dec_pen.replay(tt_pen)
+                        face['glyf'][gname_target] = tt_pen.glyph()
+                        face['hmtx'][gname_target] = cust_font['hmtx'][gname_src]
+                        face_replaced += 1
+                    except Exception:
+                        pass
+
+        optimize_gasp_table(face)
+        total_replaced += face_replaced
+
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    ttc.save(output_path)
+    return total_replaced
 
 
 def replace_font_file(src_path, dst_path):
@@ -506,10 +613,10 @@ def main():
         print(f"    - {cf['filename']} [Weight: {cf['weight']}] ({style_str})")
     print()
 
-    # 2. Discover Windows Segoe UI Fonts
-    static_found, var_found = find_segoe_fonts()
+    # 2. Discover Windows Segoe UI & Nirmala Fonts
+    static_found, var_found, nirmala_found = find_segoe_fonts()
     total_static_found = sum(len(v) for v in static_found.values())
-    print(f"[*] Found {total_static_found} static Segoe UI files and {len(var_found)} Segoe UI Variable files across Windows.")
+    print(f"[*] Found {total_static_found} static Segoe UI files, {len(var_found)} Segoe UI Variable files, and {len(nirmala_found)} Nirmala font files across Windows.")
 
     # 3. Create Untouched Safe Backups
     manifest_path = os.path.join(backup_dir, "segoe_backup_manifest.json")
@@ -521,7 +628,7 @@ def main():
         except Exception:
             manifest = {}
 
-    print("[*] Ensuring untouched backups of original Segoe fonts...")
+    print("[*] Ensuring untouched backups of original Segoe and Nirmala fonts...")
     for target_name, path_list in static_found.items():
         for p in path_list:
             if p not in manifest:
@@ -540,6 +647,15 @@ def main():
             if not os.path.exists(b_path):
                 shutil.copy2(vp, b_path)
             manifest[vp] = b_path
+
+    for np in nirmala_found:
+        if np not in manifest:
+            h = abs(hash(np)) % 100000000
+            b_name = f"{h}_{os.path.basename(np)}"
+            b_path = os.path.join(backup_dir, b_name)
+            if not os.path.exists(b_path):
+                shutil.copy2(np, b_path)
+            manifest[np] = b_path
 
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
@@ -590,8 +706,18 @@ def main():
         print(f"     [+] Patched {replaced} base glyphs with delta nullification -> saved to '{SEGOE_VAR_TARGET}'")
         compiled_var_output = out_var_path
 
+    # 5.5 Patch Nirmala UI Latin/English Glyphs (if present)
+    compiled_nirmala_output = None
+    if nirmala_found:
+        print("\n[*] Patching Nirmala UI English/Latin glyphs with custom Segoe font...")
+        primary_nirmala = nirmala_found[0]
+        out_nirmala_path = os.path.join(output_dir, "Nirmala.ttc")
+        nirmala_replaced = patch_nirmala_latin(primary_nirmala, custom_fonts, out_nirmala_path)
+        print(f"     [+] Patched {nirmala_replaced} Latin glyphs across Nirmala UI faces -> saved to 'Nirmala.ttc'")
+        compiled_nirmala_output = out_nirmala_path
+
     # 6. Apply Replacements Across Windows
-    print("\n[*] Deploying patched Segoe fonts across Windows...")
+    print("\n[*] Deploying patched Segoe & Nirmala fonts across Windows...")
     reboot_needed = False
 
     # Deploy static fonts
@@ -606,6 +732,13 @@ def main():
     if compiled_var_output:
         for dst in var_found:
             res = replace_font_file(compiled_var_output, dst)
+            if res == "reboot":
+                reboot_needed = True
+
+    # Deploy Nirmala font with updated Latin
+    if compiled_nirmala_output:
+        for dst in nirmala_found:
+            res = replace_font_file(compiled_nirmala_output, dst)
             if res == "reboot":
                 reboot_needed = True
 

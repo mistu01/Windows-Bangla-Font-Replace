@@ -283,6 +283,24 @@ def strip_bengali_from_font(font):
                     removed += 1
     return removed
 
+def optimize_gasp_table(font):
+    """
+    Ensure the font has an optimized OpenType 'gasp' table and integer scaler flags.
+    Enables DirectWrite ClearType symmetric smoothing and subpixel antialiasing
+    across all point sizes to eliminate color-fringing ('bleeding') and fuzzy edges.
+    """
+    try:
+        from fontTools.ttLib.tables._g_a_s_p import table__g_a_s_p
+        gasp = table__g_a_s_p()
+        gasp.version = 1
+        gasp.gaspRange = {8: 10, 65535: 15}
+        font['gasp'] = gasp
+
+        if 'head' in font and hasattr(font['head'], 'flags'):
+            font['head'].flags |= 0x0008
+    except Exception:
+        pass
+
 
 def scan_and_patch_segoe_ui(backup_dir, patched_dir):
     """
@@ -340,6 +358,7 @@ def scan_and_patch_segoe_ui(backup_dir, patched_dir):
                 manifest[sys_path] = backup_path
 
                 patched_file = os.path.join(patched_dir, f"Patched_{rel_hash}_{fname}")
+                optimize_gasp_table(font)
                 font.save(patched_file)
                 patched_tasks.append((patched_file, sys_path))
                 print(f"    [!] Detected & stripped {bengali_count} Bengali codepoints from: {fname}")
@@ -524,6 +543,7 @@ def merge_single_face(nirmala_ttf_path, bengali_font_path, output_path):
         merger = Merger()
         merger.options.drop_tables = list(set(merger.options.drop_tables) | tags_to_drop)
         merged = merger.merge([temp_stripped, temp_bengali_only])
+        optimize_gasp_table(merged)
         merged.save(output_path)
 
     finally:
@@ -547,6 +567,8 @@ def rebuild_ttc(merged_ttf_info_list, output_ttc_path):
     sorted_info = sorted(merged_ttf_info_list, key=lambda x: x["index"])
     ttc = TTCollection()
     ttc.fonts = [TTFont(item["merged_path"]) for item in sorted_info]
+    for f in ttc.fonts:
+        optimize_gasp_table(f)
     ttc.save(output_ttc_path)
     print(f"[+] Rebuilt TrueType Collection saved to: {output_ttc_path}")
 
